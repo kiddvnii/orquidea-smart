@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#174438" />
+  <meta name="description" content="Monitoreo inteligente de humedad y temperatura para cultivo de orquídeas" />
+  <title>Orquídea Smart | Panel de monitoreo</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+  <script src="/static/dashboard.js" defer></script>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <a class="brand" href="/" aria-label="Orquídea Smart, inicio"><span class="brand-flower">✿</span><span>Orquídea <strong>Smart</strong><small>INVERNADERO INTELIGENTE</small></span></a>
+      <nav class="nav" aria-label="Menú principal">
+        <a class="nav-link active" href="#resumen"><span>◫</span> Vista general</a>
+        <a class="nav-link" href="#historial"><span>⌁</span> Historial ambiental</a>
+        <a class="nav-link" href="#riego"><span>◷</span> Calendario de riego</a>
+        <a class="nav-link" href="#configuracion"><span>⚙</span> Configuración</a>
+        <a class="nav-link" href="/simulador" target="_blank" rel="noopener"><span>↗</span> Simulador</a>
+      </nav>
+      <div class="side-tip"><div class="tip-mark">✦</div><strong>Un cultivo saludable empieza aquí.</strong><p>Humedad objetivo: 80 %<br>Temperatura: 18–24 °C</p></div>
+      <button class="logout" id="logoutBtn" type="button">↪ Cerrar sesión</button>
+    </aside>
+    <main class="main" id="resumen">
+      <header class="topbar"><div class="breadcrumb">INVERNADERO <span>/</span> PANEL DE CONTROL</div><div class="topbar-right"><span id="clock">--:--</span><div class="avatar">✿</div></div></header>
+      <section class="welcome"><div><div class="eyebrow"><span class="eyebrow-dot"></span> SISTEMA DE MONITOREO AMBIENTAL</div><h1>Tu invernadero,<br><em>bajo control.</em></h1><p>Supervisa las condiciones de tus orquídeas en tiempo real y mantén un ambiente ideal para su crecimiento.</p><a class="hero-link" href="#riego">Organizar calendario de riego <span>↗</span></a></div><div class="orchid-art" aria-hidden="true"><span class="art-circle"></span><span class="art-flower flower-a">✿</span><span class="art-flower flower-b">✿</span><span class="art-flower flower-c">✿</span><span class="art-stem"></span><span class="art-leaf leaf-a"></span><span class="art-leaf leaf-b"></span></div></section>
+      <div class="section-heading"><div><div class="section-kicker">CONDICIONES ACTUALES</div><h2>Estado del ambiente</h2></div><span class="connection-pill" id="connectionPill"><span class="status-dot"></span> Sin datos</span></div>
+      <section class="metrics" aria-label="Condiciones en tiempo real">
+        <article class="metric-card humidity"><div class="metric-top"><span class="metric-icon">◉</span><span class="metric-tag">OBJETIVO 80 %</span></div><p class="metric-label">Humedad relativa</p><div class="metric-value"><span id="humidityValue">—</span><small>%</small></div><div class="track"><div id="humidityBar" class="track-fill" style="width:0"></div></div><p class="metric-foot" id="humidityState">Esperando la primera medición</p></article>
+        <article class="metric-card temperature"><div class="metric-top"><span class="metric-icon">☀</span><span class="metric-tag">IDEAL 18–24 °C</span></div><p class="metric-label">Temperatura ambiente</p><div class="metric-value"><span id="temperatureValue">—</span><small>°C</small></div><div class="track"><div id="temperatureBar" class="track-fill" style="width:0"></div></div><p class="metric-foot" id="temperatureState">Esperando la primera medición</p></article>
+        <article class="metric-card status-card"><div class="metric-top"><span class="metric-icon">✧</span><span class="metric-tag">ANÁLISIS</span></div><p class="metric-label">Salud del ambiente</p><div class="status-title" id="environmentStatus">Sin información</div><p class="status-detail" id="environmentDetail">Envía datos desde el simulador para comenzar.</p><div class="update-detail">Última lectura: <strong id="lastUpdated">—</strong></div></article>
+      </section>
+      <section class="alert-banner" id="alertBanner" aria-live="polite" hidden><span class="alert-symbol">!</span><div><strong id="alertTitle">Condiciones fuera del rango</strong><p id="alertDescription"></p></div></section>
+      <section class="chart-section" id="historial"><div class="section-heading"><div><div class="section-kicker">SEGUIMIENTO</div><h2>Historial ambiental</h2><p class="section-desc">Mediciones registradas en la base de datos</p></div><div class="chart-pill">✺ <span id="historyCount">0</span> registros</div></div>
+        <div class="charts"><article class="chart-card"><div class="chart-header"><div><span class="chart-icon moist">◉</span><strong>Evolución de humedad</strong></div><span class="small-meta">% de humedad relativa</span></div><div class="chart-host" id="humidityChart"><p class="chart-empty">Aún no hay suficientes mediciones</p></div><div class="chart-key"><span class="key-dot green"></span> Humedad registrada <span class="subtle-separator">·</span> Objetivo: 80 %</div></article><article class="chart-card"><div class="chart-header"><div><span class="chart-icon heat">☀</span><strong>Evolución de temperatura</strong></div><span class="small-meta">grados Celsius</span></div><div class="chart-host" id="temperatureChart"><p class="chart-empty">Aún no hay suficientes mediciones</p></div><div class="chart-key"><span class="key-dot coral"></span> Temperatura registrada <span class="subtle-separator">·</span> Rango: 18–24 °C</div></article></div>
+      </section>
+      <section class="bottom-grid" id="riego"><div class="watering-panel"><div class="panel-title"><div><div class="section-kicker">CUIDADO DE ORQUÍDEAS</div><h2>Calendario de riego</h2></div><span class="little-flower">✿</span></div><p class="panel-subtitle">Programa los días y horarios. La aplicación mostrará recordatorios mientras este panel esté abierto.</p>
+        <form id="wateringForm" class="watering-form"><label for="wateringName">Nombre de la tarea</label><input id="wateringName" type="text" maxlength="90" placeholder="Ej. Riego de orquídeas" required><label>Días de riego</label><div class="weekdays" id="weekdayGroup"><label><input type="checkbox" value="0"><span>L</span></label><label><input type="checkbox" value="1"><span>M</span></label><label><input type="checkbox" value="2"><span>M</span></label><label><input type="checkbox" value="3"><span>J</span></label><label><input type="checkbox" value="4"><span>V</span></label><label><input type="checkbox" value="5"><span>S</span></label><label><input type="checkbox" value="6"><span>D</span></label></div><div class="water-actions"><div><label for="wateringTime">Hora de riego</label><input id="wateringTime" type="time" value="09:00" required></div><button type="submit" class="primary-btn">+ Agregar riego</button></div></form>
+        <div class="list-title"><strong>Próximos riegos</strong><span id="wateringCount">0 tareas</span></div><div id="wateringList" class="watering-list"><div class="empty-list">No hay riegos programados.</div></div>
+      </div><aside class="settings-panel" id="configuracion"><div class="panel-title"><div><div class="section-kicker">PREFERENCIAS</div><h2>Configuración</h2></div><span class="settings-gear">⚙</span></div><div class="setting-block"><label for="historyInterval">Frecuencia del historial</label><p>Guarda una medición cada cierto tiempo. El valor actual se actualiza en cada envío.</p><select id="historyInterval"><option value="0">Cada lectura (modo pruebas)</option><option value="1">Cada 1 minuto</option><option value="5">Cada 5 minutos</option><option value="15">Cada 15 minutos</option><option value="30">Cada 30 minutos</option><option value="60">Cada 1 hora</option></select><button class="secondary-btn" id="saveSettings" type="button">Guardar frecuencia</button></div><div class="setting-block soft"><span class="settings-label">Notificaciones de riego</span><p>Permite avisos del navegador cuando corresponda regar y el panel esté abierto.</p><button class="outline-btn" id="notifyPermission" type="button">Activar notificaciones</button><button class="text-btn" id="testNotification" type="button">Probar recordatorio ↗</button></div><a class="sim-link" href="/simulador" target="_blank" rel="noopener"><span>✳</span><div><strong>Abrir simulador</strong><small>Enviar datos sin sensores físicos</small></div><b>↗</b></a></aside></section>
+      <footer>Orquídea Smart · Prototipo académico de monitoreo · Sensores simulados mediante API</footer>
+    </main>
+  </div>
+  <div id="toastRegion" class="toast-region" aria-live="polite"></div>
+</body>
+</html>
