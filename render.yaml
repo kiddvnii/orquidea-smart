@@ -1,6 +1,3 @@
-# Despliegue integrado: 2 paginas + API + base de datos.
-# En Render: New > Blueprint > conectar repositorio > Deploy Blueprint.
-# La base de datos gratuita de Render vence a los 30 dias: ver README.
 services:
   - type: web
     name: orquidea-smart
@@ -10,10 +7,6 @@ services:
     startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
     envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: orquidea-smart-db
-          property: connectionString
       - key: SECRET_KEY
         generateValue: true
       - key: SENSOR_API_KEY
@@ -24,7 +17,3 @@ services:
         value: '*'
       - key: SECURE_COOKIE
         value: '1'
-
-databases:
-  - name: orquidea-smart-db
-    plan: free
