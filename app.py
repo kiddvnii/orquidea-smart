@@ -5,11 +5,14 @@ Producción: uvicorn app:app --host 0.0.0.0 --port $PORT
 """
 from __future__ import annotations
 
+import asyncio
 import json
+import logging
 import math
 import os
 import re
 import secrets
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -114,7 +117,40 @@ def make_app(database_url: str | None = None, sensor_key: str | None = None,
         if conn.execute(select(settings_table.c.key).where(settings_table.c.key == 'history_interval')).first() is None:
             conn.execute(insert(settings_table).values(key='history_interval', value='1'))
 
-    app = FastAPI(title='Orquídea Smart', docs_url=None, redoc_url=None)
+    @asynccontextmanager
+    async def lifespan(app_instance: FastAPI):
+        # GitHub Actions permanece como respaldo. Este bucle revisa los riegos
+        # localmente mientras la instancia Render esté activa.
+        async def run_scheduler():
+            while True:
+                if email_is_configured() or email_sender is not None:
+                    try:
+                        await asyncio.to_thread(
+                            dispatch_due, engine, watering, app_instance.state.email_sender,
+                            grace_minutes=int(os.getenv('NOTIFICATION_GRACE_MINUTES', '30')),
+                            timezone_name=os.getenv('NOTIFICATION_TIMEZONE', 'America/Santiago'),
+                        )
+                    except Exception:
+                        logging.getLogger('orquidea.notifications').exception(
+                            'No se pudo ejecutar la revisión automática de riegos'
+                        )
+                await asyncio.sleep(45)
+
+        task = None
+        if os.getenv('NOTIFICATION_INTERNAL_WORKER', '0') == '1':
+            task = asyncio.create_task(run_scheduler())
+        try:
+            yield
+        finally:
+            if task:
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+
+    app = FastAPI(title='Orquídea Smart', docs_url=None, redoc_url=None,
+                  lifespan=lifespan)
     app.state.db = engine
     app.state.email_sender = email_sender or send_email
     app.state.sensor_key = sensor_key if sensor_key is not None else os.getenv('SENSOR_API_KEY', 'cambia-esta-clave')
