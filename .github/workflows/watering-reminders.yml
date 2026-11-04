@@ -22,6 +22,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
+      - name: Dar tiempo a Render para desplegar el cambio
+        if: github.event_name == 'push'
+        shell: bash
+        run: sleep 100
+
       - name: Obtener identidad firmada de GitHub
         id: oidc
         shell: bash
