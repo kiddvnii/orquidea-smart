@@ -318,9 +318,32 @@ def make_app(database_url: str | None = None, sensor_key: str | None = None,
                 'Recibirás recordatorios según los días y horarios de riego.\n',
                 recipient_email(),
             )
-        except Exception:
-            return error('No se pudo enviar el correo. Revisa la configuración y los logs.', 502)
+        except Exception as exc:
+            # Solo exponemos errores de transporte sin incluir tokens ni contraseñas.
+            description = str(exc) if isinstance(exc, RuntimeError) else type(exc).__name__
+            return error('No se pudo enviar el correo: ' + description[:150], 502)
         return {'ok': True, 'email': recipient_email()}
+
+    @app.post('/api/notifications/smoke-test')
+    def notification_smoke_test(request: Request):
+        """Prueba de correo real protegida por autenticación del programador."""
+        if not authorized_dispatch(request.headers):
+            return error('Autenticación del programador inválida.', 401)
+        if not email_is_configured() and email_sender is None:
+            return error('Proveedor de correo sin configurar.', 503)
+        try:
+            app.state.email_sender(
+                '[Orquídea Smart] Verificación automática del correo',
+                'Hola. Esta es una prueba real enviada por Orquídea Smart '
+                'para confirmar la conexión de Render con el proveedor de correo.\n'
+                'Los próximos recordatorios se enviarán según el calendario de riego.',
+                recipient_email(),
+            )
+        except Exception as exc:
+            description = str(exc) if isinstance(exc, RuntimeError) else type(exc).__name__
+            return error('El proveedor rechazó la prueba: ' + description[:150], 502)
+        return {'ok': True, 'accepted_by_provider': True, 'provider': email_provider(),
+                'recipient': recipient_email()}
 
     @app.post('/api/notifications/dispatch')
     def notifications_dispatch(request: Request):
