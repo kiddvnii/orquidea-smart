@@ -3,12 +3,12 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import smtplib
 import ssl
 from datetime import date, datetime, time, timedelta, timezone
 from email.message import EmailMessage
-from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+import httpx
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import (
@@ -58,35 +58,41 @@ def send_email(subject: str, body: str, recipient: str) -> None:
     if not email_is_configured():
         raise RuntimeError('No está configurado el proveedor de correo.')
     if email_provider() == 'resend':
-        payload = json.dumps({
+        # Se usa un cliente HTTP estándar con User-Agent explícito.
+        # El identificador Python-urllib puede ser bloqueado por filtros externos.
+        payload = {
             'from': os.getenv('EMAIL_FROM', 'Orquídea Smart <onboarding@resend.dev>'),
             'to': [recipient], 'subject': subject, 'text': body,
-        }).encode('utf-8')
-        request = Request('https://api.resend.com/emails', data=payload, method='POST', headers={
+        }
+        headers = {
             'Authorization': 'Bearer ' + os.environ['RESEND_API_KEY'],
-            'Content-Type': 'application/json',
-        })
+            'User-Agent': 'OrquideaSmart/1.0 (+https://orquidea-smart.onrender.com)',
+            'Accept': 'application/json',
+        }
         try:
-            with urlopen(request, timeout=15) as response:
-                if response.status not in (200, 201, 202):
-                    raise RuntimeError(f'Proveedor de correo: HTTP {response.status}')
-        except HTTPError as exc:
-            # Resend explica los rechazos 403 en un JSON. Mostramos el motivo,
-            # pero nunca credenciales ni encabezados de autenticación.
-            try:
-                data = json.loads(exc.read(4096).decode('utf-8', errors='replace'))
-                detail = str(data.get('message') or data.get('error') or '')
-            except (ValueError, TypeError, UnicodeError, AttributeError):
-                detail = ''
-            if detail:
-                import re
-                detail = re.sub(r're_[A-Za-z0-9_-]{8,}', '[clave oculta]', detail)
-                detail = re.sub(r'(?i)bearer\\s+[^\\s]+', 'Bearer [oculto]', detail)
-                detail = detail.replace('\\n', ' ').replace('\\r', ' ')[:240]
-            suffix = ': ' + detail if detail else ''
-            raise RuntimeError(f'Resend rechazó el correo (HTTP {exc.code}{suffix}).') from exc
-        except (URLError, TimeoutError) as exc:
+            response = httpx.post(
+                'https://api.resend.com/emails', json=payload,
+                headers=headers, timeout=15.0,
+            )
+        except httpx.RequestError as exc:
             raise RuntimeError('No fue posible conectar con Resend.') from exc
+
+        if response.status_code not in (200, 201, 202):
+            detail = ''
+            try:
+                data = response.json()
+                if isinstance(data, dict):
+                    detail = str(data.get('message') or data.get('error') or '')
+            except ValueError:
+                pass
+            if detail:
+                detail = re.sub(r're_[A-Za-z0-9_-]{8,}', '[clave oculta]', detail)
+                detail = re.sub(r'(?i)bearer\\s+\\S+', 'Bearer [oculto]', detail)
+                detail = detail.replace('\\n', ' ').replace('\\r', ' ')[:200]
+            elif 'html' in response.headers.get('content-type', '').lower():
+                detail = 'respuesta HTML (posible bloqueo de seguridad)'
+            suffix = ': ' + detail if detail else ''
+            raise RuntimeError(f'Resend rechazó el correo (HTTP {response.status_code}{suffix}).')
         return
 
     host = os.getenv('SMTP_HOST', 'smtp.gmail.com')
