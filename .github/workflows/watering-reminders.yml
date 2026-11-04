@@ -9,6 +9,7 @@ on:
       - '.github/workflows/watering-reminders.yml'
       - 'notification_auth.py'
       - 'notifications.py'
+      - 'app.py'
   schedule:
     - cron: '*/5 * * * *'
   workflow_dispatch:
@@ -37,6 +38,15 @@ jobs:
           token=$(python -c 'import json,sys; print(json.load(sys.stdin)["value"])' <<< "$response")
           echo "::add-mask::$token"
           echo "OIDC_TOKEN=$token" >> "$GITHUB_ENV"
+
+      - name: Probar envío real del proveedor de correo
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error --max-time 30 \
+            -X POST 'https://orquidea-smart.onrender.com/api/notifications/smoke-test' \
+            -H "Authorization: Bearer $OIDC_TOKEN"
 
       - name: Procesar riegos en Render
         shell: bash
