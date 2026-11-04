@@ -47,7 +47,7 @@ def valid_github_oidc(token: str) -> bool:
         and str(claims.get('repository_id')) == ALLOWED_REPOSITORY_ID
         and claims.get('ref') == 'refs/heads/main'
         and claims.get('workflow_ref') == WORKFLOW_REF
-        and claims.get('event_name') in ('schedule', 'workflow_dispatch')
+        and claims.get('event_name') in ('schedule', 'workflow_dispatch', 'push')
     )
 
 
