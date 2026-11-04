@@ -1,4 +1,3 @@
-"""Pruebas de riego por correo sin enviar mensajes reales."""
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 

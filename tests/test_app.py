@@ -1,4 +1,3 @@
-"""Pruebas funcionales y de integración de la API de Orquídea Smart."""
 import pytest
 from fastapi.testclient import TestClient
 from app import make_app

@@ -1,8 +1,3 @@
-"""Orquídea Smart — backend y panel web.
-
-Inicio local: python app.py
-Producción: uvicorn app:app --host 0.0.0.0 --port $PORT
-"""
 from __future__ import annotations
 
 import asyncio
@@ -119,8 +114,6 @@ def make_app(database_url: str | None = None, sensor_key: str | None = None,
 
     @asynccontextmanager
     async def lifespan(app_instance: FastAPI):
-        # GitHub Actions permanece como respaldo. Este bucle revisa los riegos
-        # localmente mientras la instancia Render esté activa.
         async def run_scheduler():
             while True:
                 if email_is_configured() or email_sender is not None:
@@ -355,14 +348,12 @@ def make_app(database_url: str | None = None, sensor_key: str | None = None,
                 recipient_email(),
             )
         except Exception as exc:
-            # Solo exponemos errores de transporte sin incluir tokens ni contraseñas.
             description = str(exc) if isinstance(exc, RuntimeError) else type(exc).__name__
             return error('No se pudo enviar el correo: ' + description[:150], 502)
         return {'ok': True, 'email': recipient_email()}
 
     @app.post('/api/notifications/smoke-test')
     def notification_smoke_test(request: Request):
-        """Prueba de correo real protegida por autenticación del programador."""
         if not authorized_dispatch(request.headers):
             return error('Autenticación del programador inválida.', 401)
         if not email_is_configured() and email_sender is None:
