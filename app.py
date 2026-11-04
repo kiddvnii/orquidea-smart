@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from notification_auth import authorized_dispatch
 from notifications import (
     dispatch_due, email_is_configured, email_provider,
     notification_metadata, recent_delivery_events, recipient_email, send_email,
@@ -323,12 +324,8 @@ def make_app(database_url: str | None = None, sensor_key: str | None = None,
 
     @app.post('/api/notifications/dispatch')
     def notifications_dispatch(request: Request):
-        expected = os.getenv('NOTIFICATION_JOB_KEY', '')
-        supplied = request.headers.get('x-notification-key', '')
-        if not expected or len(expected) < 24:
-            return error('Configura NOTIFICATION_JOB_KEY (mínimo 24 caracteres).', 503)
-        if not secrets.compare_digest(supplied, expected):
-            return error('Clave del programador inválida.', 401)
+        if not authorized_dispatch(request.headers):
+            return error('Autenticación del programador inválida.', 401)
         if not email_is_configured() and email_sender is None:
             return error('Correo sin configurar.', 503)
         grace = int(os.getenv('NOTIFICATION_GRACE_MINUTES', '30'))
