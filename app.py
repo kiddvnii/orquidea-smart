@@ -14,6 +14,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from notifications import (
+    dispatch_due, email_is_configured, email_provider,
+    notification_metadata, recent_delivery_events, recipient_email, send_email,
+)
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -92,7 +96,7 @@ def error(message: str, status: int = 400) -> JSONResponse:
 
 
 def make_app(database_url: str | None = None, sensor_key: str | None = None,
-             admin_password: str | None = None) -> FastAPI:
+             admin_password: str | None = None, email_sender=None) -> FastAPI:
     url = database_url or os.getenv('DATABASE_URL') or f'sqlite:///{BASE / "orquideas.db"}'
     if url.startswith('postgres://'):
         url = 'postgresql+psycopg://' + url[len('postgres://'):]
@@ -104,12 +108,14 @@ def make_app(database_url: str | None = None, sensor_key: str | None = None,
         engine_params['connect_args'] = {'check_same_thread': False, 'timeout': 30}
     engine = create_engine(url, **engine_params)
     metadata.create_all(engine)
+    notification_metadata.create_all(engine)
     with engine.begin() as conn:
         if conn.execute(select(settings_table.c.key).where(settings_table.c.key == 'history_interval')).first() is None:
             conn.execute(insert(settings_table).values(key='history_interval', value='1'))
 
     app = FastAPI(title='Orquídea Smart', docs_url=None, redoc_url=None)
     app.state.db = engine
+    app.state.email_sender = email_sender or send_email
     app.state.sensor_key = sensor_key if sensor_key is not None else os.getenv('SENSOR_API_KEY', 'cambia-esta-clave')
     app.state.admin_password = admin_password if admin_password is not None else os.getenv('ADMIN_PASSWORD', '')
     app.state.signer = URLSafeTimedSerializer(os.getenv('SECRET_KEY', 'solo-desarrollo-local-cambiar'))
@@ -283,6 +289,52 @@ def make_app(database_url: str | None = None, sensor_key: str | None = None,
         with engine.begin() as conn:
             conn.execute(update(settings_table).where(settings_table.c.key == 'history_interval').values(value=str(value)))
         return {'ok': True, 'history_interval': value}
+
+    @app.get('/api/notifications/status')
+    def notification_status(request: Request):
+        if rejected := require_admin(request):
+            return rejected
+        return {
+            'email': recipient_email(),
+            'configured': email_is_configured() or email_sender is not None,
+            'provider': email_provider(),
+            'timezone': os.getenv('NOTIFICATION_TIMEZONE', 'America/Santiago'),
+            'recent': recent_delivery_events(engine),
+        }
+
+    @app.post('/api/notifications/test')
+    def notification_test(request: Request):
+        if rejected := require_admin(request):
+            return rejected
+        if not app.state.admin_password:
+            return error('Configura ADMIN_PASSWORD para probar el correo.', 503)
+        if not email_is_configured() and email_sender is None:
+            return error('Configura primero el proveedor de correo.', 503)
+        try:
+            app.state.email_sender(
+                '[Orquídea Smart] Correo de prueba',
+                '¡Hola!\n\nEl módulo de correo de Orquídea Smart está listo. '
+                'Recibirás recordatorios según los días y horarios de riego.\n',
+                recipient_email(),
+            )
+        except Exception:
+            return error('No se pudo enviar el correo. Revisa la configuración y los logs.', 502)
+        return {'ok': True, 'email': recipient_email()}
+
+    @app.post('/api/notifications/dispatch')
+    def notifications_dispatch(request: Request):
+        expected = os.getenv('NOTIFICATION_JOB_KEY', '')
+        supplied = request.headers.get('x-notification-key', '')
+        if not expected or len(expected) < 24:
+            return error('Configura NOTIFICATION_JOB_KEY (mínimo 24 caracteres).', 503)
+        if not secrets.compare_digest(supplied, expected):
+            return error('Clave del programador inválida.', 401)
+        if not email_is_configured() and email_sender is None:
+            return error('Correo sin configurar.', 503)
+        grace = int(os.getenv('NOTIFICATION_GRACE_MINUTES', '30'))
+        return dispatch_due(engine, watering, app.state.email_sender,
+                            grace_minutes=grace,
+                            timezone_name=os.getenv('NOTIFICATION_TIMEZONE', 'America/Santiago'))
 
     @app.post('/api/watering')
     async def add_watering(request: Request):

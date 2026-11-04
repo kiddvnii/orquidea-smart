@@ -178,6 +178,39 @@ $('notifyPermission').addEventListener('click',async()=>{
   const status=await Notification.requestPermission();toast(status==='granted'?'Notificaciones habilitadas.':'No se habilitaron las notificaciones.',status!=='granted');
 });
 $('testNotification').addEventListener('click',()=>notify('Recordatorio de prueba: revisa el riego de tus orquídeas.'));
+async function loadNotificationStatus() {
+  try {
+    const data = await api('/api/notifications/status');
+    $('emailDestination').textContent = data.email;
+    $('emailStatus').textContent = data.configured
+      ? 'Proveedor de correo configurado. Prueba un envío y comprueba que el programador esté activo.'
+      : 'El envío de correos necesita configurar el proveedor en Render.';
+    const log = $('emailLog');
+    log.replaceChildren();
+    if (!data.recent.length) {
+      const none = document.createElement('small');
+      none.textContent = 'Todavía no hay envíos registrados.';
+      log.appendChild(none);
+    } else {
+      for (const entry of data.recent) {
+        const item = document.createElement('small');
+        const detail = entry.status === 'sent' ? 'Enviado' : entry.status === 'failed' ? 'Pendiente de reintento' : 'En proceso';
+        item.textContent = `${localDate(entry.scheduled_for)} · Riego #${entry.watering_id} · ${detail}`;
+        log.appendChild(item);
+      }
+    }
+  } catch (err) { console.warn('No se pudo consultar el estado del correo:', err); }
+}
+$('testEmailNotification').addEventListener('click', async () => {
+  const button = $('testEmailNotification');
+  button.disabled = true;
+  try {
+    const result = await api('/api/notifications/test', {method:'POST'});
+    toast(`Proveedor aceptó el correo de prueba para ${result.email}. Revisa recibidos y spam.`);
+    await loadNotificationStatus();
+  } catch (err) { toast(err.message, true); }
+  finally { button.disabled = false; }
+});
 $('logoutBtn').addEventListener('click',async()=>{await api('/api/logout',{method:'POST'});location.href='/login';});
 function clock(){ $('clock').textContent=new Date().toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'}); }
-clock();refresh();setInterval(clock,30_000);setInterval(refresh,8000);setInterval(checkWateringDue,20_000);
+clock();refresh();loadNotificationStatus();setInterval(loadNotificationStatus,60_000);setInterval(clock,30_000);setInterval(refresh,8000);setInterval(checkWateringDue,20_000);

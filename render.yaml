@@ -17,3 +17,17 @@ services:
         value: '*'
       - key: SECURE_COOKIE
         value: '1'
+      - key: NOTIFICATION_EMAIL
+        value: orquidea.smart@gmail.com
+      - key: NOTIFICATION_TIMEZONE
+        value: America/Santiago
+      - key: NOTIFICATION_GRACE_MINUTES
+        value: '30'
+      - key: NOTIFICATION_JOB_KEY
+        sync: false
+      - key: EMAIL_PROVIDER
+        value: resend
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        value: 'Orquídea Smart <onboarding@resend.dev>'
