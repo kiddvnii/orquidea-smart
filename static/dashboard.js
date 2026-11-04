@@ -18,9 +18,16 @@ function toast(message, isError = false) {
 async function api(path, options = {}) {
   const response = await fetch(path, {cache:'no-store', credentials:'same-origin', ...options});
   let data;
-  try { data = await response.json(); } catch { data = {}; }
+  try {
+    data = await response.json();
+  } catch {
+    data = {};
+  }
   if (!response.ok) {
-    if (response.status === 401) { toast('Tu sesión expiró. Vuelve a ingresar.', true); setTimeout(() => location.assign('/login'), 900); }
+    if (response.status === 401) {
+      toast('Tu sesión expiró. Vuelve a ingresar.', true);
+      setTimeout(() => location.assign('/login'), 900);
+    }
     throw new Error(data.detail || `Error ${response.status}`);
   }
   return data;
@@ -60,7 +67,6 @@ function updateMetrics(reading) {
     $('alertTitle').textContent = 'Alerta ambiental';
     $('alertDescription').textContent = warnings.join(' ');
     const signature = warnings.join('|');
-    // Solo una alerta emergente nueva cuando cambian las condiciones y la lectura es reciente.
     if (!isStale && signature !== lastWarningSignature) toast(warnings.join(' '), true);
     lastWarningSignature = signature;
   } else {
@@ -150,7 +156,6 @@ function checkWateringDue() {
   for(const event of wateringEvents){
     if(!event.enabled||!event.weekdays.includes(day))continue;
     const [h,m]=event.time.split(':').map(Number), due=h*60+m;
-    // Ventana de 5 minutos para evitar perder avisos por intervalos de consulta.
     if(currentMinutes<due||currentMinutes>due+4)continue;
     const key=`orchid-notified-${event.id}-${stamp}`;
     if(localStorage.getItem(key))continue;
