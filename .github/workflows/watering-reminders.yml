@@ -15,14 +15,11 @@ jobs:
     steps:
       - name: Obtener identidad firmada de GitHub
         id: oidc
-        env:
-          REQUEST_URL: ${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}
-          REQUEST_TOKEN: ${{ env.ACTIONS_ID_TOKEN_REQUEST_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
           audience='orquidea-smart-notifications'
-          response=$(curl --fail --silent --show-error --max-time 20 -H "Authorization: bearer $REQUEST_TOKEN" "$REQUEST_URL&audience=$audience")
+          response=$(curl --fail --silent --show-error --max-time 20 -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$audience")
           token=$(python -c 'import json,sys; print(json.load(sys.stdin)["value"])' <<< "$response")
           echo "::add-mask::$token"
           echo "OIDC_TOKEN=$token" >> "$GITHUB_ENV"
