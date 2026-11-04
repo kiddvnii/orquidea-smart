@@ -74,3 +74,13 @@ def test_zona_horaria_chile():
     event={'id':1,'name':'Riego','weekdays':'[0]','time':'23:59','enabled':True}
     moment=chile(2026,11,2,23,59)
     assert len(list(make_occurrences([event],moment,30,CHILE))) == 1
+
+def test_smoke_test_autenticado(setup):
+    _, client, sent = setup
+    assert client.post('/api/notifications/smoke-test').status_code == 401
+    valid = {'X-Notification-Key': 'clave-segura-para-programador-1234567890'}
+    result = client.post('/api/notifications/smoke-test', headers=valid)
+    assert result.status_code == 200
+    assert result.json()['accepted_by_provider'] is True
+    assert len(sent) == 1
+    assert sent[0][2] == 'orquidea.smart@gmail.com'
