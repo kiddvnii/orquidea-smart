@@ -1,5 +1,14 @@
 name: Recordatorios automáticos de riego
 on:
+  # Ejecutar también al publicar una nueva versión: permite comprobar
+  # inmediatamente la integración sin depender del primer cron de GitHub.
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/watering-reminders.yml'
+      - 'notification_auth.py'
+      - 'notifications.py'
   schedule:
     - cron: '*/5 * * * *'
   workflow_dispatch:
