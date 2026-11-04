@@ -71,7 +71,20 @@ def send_email(subject: str, body: str, recipient: str) -> None:
                 if response.status not in (200, 201, 202):
                     raise RuntimeError(f'Proveedor de correo: HTTP {response.status}')
         except HTTPError as exc:
-            raise RuntimeError(f'Resend rechazó el correo (HTTP {exc.code}).') from exc
+            # Resend explica los rechazos 403 en un JSON. Mostramos el motivo,
+            # pero nunca credenciales ni encabezados de autenticación.
+            try:
+                data = json.loads(exc.read(4096).decode('utf-8', errors='replace'))
+                detail = str(data.get('message') or data.get('error') or '')
+            except (ValueError, TypeError, UnicodeError, AttributeError):
+                detail = ''
+            if detail:
+                import re
+                detail = re.sub(r're_[A-Za-z0-9_-]{8,}', '[clave oculta]', detail)
+                detail = re.sub(r'(?i)bearer\\s+[^\\s]+', 'Bearer [oculto]', detail)
+                detail = detail.replace('\\n', ' ').replace('\\r', ' ')[:240]
+            suffix = ': ' + detail if detail else ''
+            raise RuntimeError(f'Resend rechazó el correo (HTTP {exc.code}{suffix}).') from exc
         except (URLError, TimeoutError) as exc:
             raise RuntimeError('No fue posible conectar con Resend.') from exc
         return
