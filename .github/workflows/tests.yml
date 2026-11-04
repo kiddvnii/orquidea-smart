@@ -1,0 +1,27 @@
+name: Pruebas de Orquídea Smart
+
+on:
+  push:
+    branches:
+      - main
+      - feature/programador-github-oidc
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+      - name: Ejecutar pruebas
+        run: python -m pytest -q

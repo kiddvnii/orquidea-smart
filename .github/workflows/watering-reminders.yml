@@ -1,0 +1,33 @@
+name: Recordatorios automáticos de riego
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Obtener identidad firmada de GitHub
+        id: oidc
+        shell: bash
+        run: |
+          set -euo pipefail
+          audience='orquidea-smart-notifications'
+          response=$(curl --fail --silent --show-error --max-time 20 -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$audience")
+          token=$(python -c 'import json,sys; print(json.load(sys.stdin)["value"])' <<< "$response")
+          echo "::add-mask::$token"
+          echo "OIDC_TOKEN=$token" >> "$GITHUB_ENV"
+
+      - name: Procesar riegos en Render
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error --retry 2 --retry-delay 5 --max-time 80 \
+            -X POST 'https://orquidea-smart.onrender.com/api/notifications/dispatch' \
+            -H "Authorization: Bearer $OIDC_TOKEN"
