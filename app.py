@@ -25,12 +25,14 @@ from notifications import (
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from sqlalchemy import (
     Boolean, Column, DateTime, Float, Integer, MetaData, String, Table,
     Text, create_engine, delete, func, insert, select, update,
 )
+
+from pdf_report import build_report
 
 BASE = Path(__file__).resolve().parent
 load_dotenv(BASE / '.env')
@@ -311,6 +313,25 @@ def make_app(database_url: str | None = None, sensor_key: str | None = None,
         with engine.connect() as conn:
             results = conn.execute(select(readings).order_by(readings.c.id.desc()).limit(limit)).all()
             return {'items': [row_reading(row) for row in reversed(results)], 'count': len(results)}
+
+    @app.get('/api/reports/pdf')
+    def download_report(request: Request):
+        if rejected := require_admin(request):
+            return rejected
+        with engine.connect() as conn:
+            current = row_reading(conn.execute(select(latest).where(latest.c.id == 1)).first())
+            rows = conn.execute(select(readings).order_by(readings.c.id.desc()).limit(100)).all()
+            history = [row_reading(row) for row in rows]
+            schedules = list_watering(conn)
+
+        generated = datetime.now(timezone.utc)
+        filename = f'orquidea-smart-{generated:%Y%m%d-%H%M%S}Z.pdf'
+        return Response(build_report(generated, current, history, schedules),
+                        media_type='application/pdf', headers={
+                            'Content-Disposition': f'attachment; filename="{filename}"',
+                            'Cache-Control': 'no-store',
+                        })
+
 
     @app.put('/api/settings')
     async def update_settings(request: Request):
