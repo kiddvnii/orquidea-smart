@@ -1,7 +1,3 @@
-"""Programador de recordatorios para ejecución local.
-
-En Render free utiliza un cron HTTP externo hacia /api/notifications/dispatch.
-"""
 import argparse
 import os
 import time

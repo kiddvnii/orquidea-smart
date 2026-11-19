@@ -1,4 +1,3 @@
-"""Procesamiento persistente de recordatorios de riego por correo."""
 from __future__ import annotations
 
 import json
@@ -54,12 +53,9 @@ def email_is_configured() -> bool:
     return False
 
 def send_email(subject: str, body: str, recipient: str) -> None:
-    """Envía mediante HTTPS/Resend o SMTP; las claves nunca se exponen al cliente."""
     if not email_is_configured():
         raise RuntimeError('No está configurado el proveedor de correo.')
     if email_provider() == 'resend':
-        # Se usa un cliente HTTP estándar con User-Agent explícito.
-        # El identificador Python-urllib puede ser bloqueado por filtros externos.
         payload = {
             'from': os.getenv('EMAIL_FROM', 'Orquídea Smart <onboarding@resend.dev>'),
             'to': [recipient], 'subject': subject, 'text': body,
@@ -119,7 +115,6 @@ def ensure_utc(dt: datetime) -> datetime:
     return (dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt.astimezone(timezone.utc))
 
 def make_occurrences(watering_rows, now: datetime, grace_minutes: int, tz: ZoneInfo):
-    """Lunes=0, domingo=6; días y horas se interpretan en Santiago."""
     local_now = now.astimezone(tz)
     local_start = (now - timedelta(minutes=grace_minutes)).astimezone(tz)
     dates: list[date] = [local_start.date()]
@@ -155,7 +150,6 @@ def _insert_if_missing(conn, occurrence):
 
 def dispatch_due(engine, watering_table, sender=send_email, *, now=None,
                  grace_minutes=30, timezone_name='America/Santiago') -> dict:
-    """Genera y reclama ocurrencias atómicamente, con reintentos y deduplicación."""
     if not 1 <= grace_minutes <= 1440:
         raise ValueError('grace_minutes fuera de rango')
     tz = ZoneInfo(timezone_name)

@@ -1,7 +1,5 @@
 name: Recordatorios automáticos de riego
 on:
-  # Ejecutar también al publicar una nueva versión: permite comprobar
-  # inmediatamente la integración sin depender del primer cron de GitHub.
   push:
     branches:
       - main

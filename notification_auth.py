@@ -1,8 +1,3 @@
-"""Autenticación del programador de GitHub Actions mediante tokens OIDC firmados.
-
-No requiere guardar una clave compartida en GitHub ni abrir el endpoint al público.
-Se conserva NOTIFICATION_JOB_KEY como alternativa para cron externo.
-"""
 from __future__ import annotations
 
 import os
@@ -19,7 +14,6 @@ ALLOWED_REPOSITORY = 'kiddvnii/orquidea-smart'
 ALLOWED_REPOSITORY_ID = '1431729844'
 WORKFLOW_REF = ALLOWED_REPOSITORY + '/.github/workflows/watering-reminders.yml@refs/heads/main'
 
-# Con caché para no consultar las claves públicas en cada ejecución.
 _jwks_client = PyJWKClient(GITHUB_JWKS, cache_jwk_set=True, lifespan=3600, timeout=8)
 
 
